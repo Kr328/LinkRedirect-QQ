@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference android:key="status" android:title="@string/status" android:summary="@string/unauthorized" />
+
+    <PreferenceCategory android:title="@string/redirect">
+        <SwitchPreference
+            android:key="normal_link"
+            android:title="@string/redirect_normal_link"
+            android:summary="@string/redirect_normal_link_summary"
+            android:defaultValue="true" />
+<!--        <SwitchPreference-->
+<!--            android:key="bilibili_link"-->
+<!--            android:title="@string/redirect_bilibili"-->
+<!--            android:summary="@string/redirect_bilibili_summary"-->
+<!--            android:defaultValue="true" />-->
+    </PreferenceCategory>
+</PreferenceScreen>

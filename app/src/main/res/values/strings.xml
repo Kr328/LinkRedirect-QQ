@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">QQ 链接重定向</string>
+    <string name="status">状态</string>
+    <string name="unauthorized">未授权</string>
+    <string name="authorized">已授权</string>
+    <string name="redirect">重定向</string>
+    <string name="redirect_normal_link">重定向普通链接</string>
+    <string name="redirect_normal_link_summary">重定向常见消息链接</string>
+    <string name="redirect_bilibili">重定向 Bilibili 小程序</string>
+    <string name="redirect_bilibili_summary">重定向 Bilibili 小程序内容至 Bilibili</string>
+</resources>
