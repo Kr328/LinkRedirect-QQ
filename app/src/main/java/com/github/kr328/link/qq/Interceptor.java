@@ -1,6 +1,8 @@
 package com.github.kr328.link.qq;
 
 import android.app.Application;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.LabeledIntent;
 import android.net.Uri;
@@ -12,18 +14,18 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class Interceptor {
-    private static final String STRING_USE_BROWSER_OPEN = "使用浏览器打开";
-    private static final String STRING_INTERNAL_BROWSER = "内置浏览器";
+public class Interceptor extends ContextWrapper {
     private static final String CATEGORY_IGNORE = "com.github.kr328.link.qq.IGNORE";
 
     private final Application application;
 
     @Keep
-    public Interceptor(Application application) {
+    public Interceptor(Application application, Context context) {
+        super(context);
+
         this.application = application;
 
-        Log.i("RedirectLink", "application " + this.application.getPackageName() + " injected");
+        Log.i(Constants.TAG, "application " + application.getPackageName() + " injected");
     }
 
     @Keep
@@ -32,6 +34,8 @@ public class Interceptor {
         if (intent.getComponent() == null)
             return intent;
 
+        Log.i(Constants.TAG, "Intercept " + application.getPackageName() + " intent: " + intent);
+
         if (intent.hasCategory(CATEGORY_IGNORE))
             return intent;
 
@@ -39,7 +43,9 @@ public class Interceptor {
         if (normalLink != null)
             return normalLink;
 
-        //dumpExtras(intent);
+        if (BuildConfig.DEBUG) {
+            dumpExtras(intent);
+        }
 
         return intent;
     }
@@ -71,7 +77,7 @@ public class Interceptor {
                 .authority(BuildConfig.APPLICATION_ID + ".options")
                 .build();
 
-        Bundle bundle = application.getContentResolver().call(uri, "GET", null, null);
+        Bundle bundle = getContentResolver().call(uri, "GET", null, null);
 
         if (bundle == null) {
             bundle = new Bundle();
@@ -89,27 +95,18 @@ public class Interceptor {
         view.addCategory(Intent.CATEGORY_BROWSABLE);
         view.setData(uri);
 
-        Intent chooser = Intent.createChooser(view, STRING_USE_BROWSER_OPEN);
+        Intent chooser = Intent.createChooser(view, getString(R.string.open_link));
 
         chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[]{
-                new LabeledIntent(original, application.getPackageName(), STRING_INTERNAL_BROWSER, 0)
+                new LabeledIntent(original, getPackageName(), getString(R.string.internal_browser), 0)
         });
 
-        Log.i("RedirectLink", "Open " + uri);
+        Log.i(Constants.TAG, "Opening " + uri);
 
         return chooser;
     }
 
     private void dumpExtras(@NonNull Intent intent) {
-        Log.d("RedirectLink", "Begin dump " + intent);
-
-        Bundle extras = intent.getExtras();
-
-        if (extras == null)
-            return;
-
-        for (String key : extras.keySet()) {
-            Log.d("RedirectLink", Dumper.dump(application.getPackageName(), intent));
-        }
+        Log.d(Constants.TAG, Dumper.dump(getPackageName(), intent));
     }
 }

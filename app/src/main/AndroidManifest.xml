@@ -14,7 +14,7 @@
         android:theme="@style/Theme.AppCompat.Light">
 
         <meta-data android:name="interceptor" android:value="com.github.kr328.link.qq.Interceptor" />
-        <meta-data android:name="target" android:value="com.tencent.mobileqq:com.tencent.tim" />
+        <meta-data android:name="target" android:value="com.tencent.mobileqq|com.tencent.tim" />
 
         <activity android:name=".MainActivity">
             <intent-filter>
