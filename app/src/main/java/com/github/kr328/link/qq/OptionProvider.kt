@@ -1,65 +1,59 @@
-package com.github.kr328.link.qq;
+package com.github.kr328.link.qq
 
-import android.content.ContentProvider;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.Bundle;
+import android.content.ContentProvider
+import android.content.ContentValues
+import android.content.Context
+import android.database.Cursor
+import android.net.Uri
+import android.os.Bundle
+import androidx.core.os.bundleOf
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-public class OptionProvider extends ContentProvider {
-    @Override
-    public boolean onCreate() {
-        return true;
+class OptionProvider : ContentProvider() {
+    override fun onCreate(): Boolean {
+        return true
     }
 
-    @Nullable
-    @Override
-    public Bundle call(@NonNull String method, @Nullable String arg, @Nullable Bundle extras) {
-        if ("GET".equals(method)) {
-            SharedPreferences sp = getContext().getSharedPreferences("options", Context.MODE_PRIVATE);
+    override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
+        if ("GET" == method) {
+            val sp = context!!.getSharedPreferences("options", Context.MODE_PRIVATE)
 
-            Bundle result = new Bundle();
-
-            result.putBoolean("normal_link", sp.getBoolean("normal_link", true));
-            result.putBoolean("bilibili_link", sp.getBoolean("bilibili_link", true));
-            result.putBoolean("file_open", sp.getBoolean("file_open", true));
-
-            return result;
+            return bundleOf(
+                "normal_link" to sp.getBoolean("normal_link", true),
+                "bilibili_link" to sp.getBoolean("bilibili_link", true),
+                "file_open" to sp.getBoolean("file_open", true)
+            )
         }
-
-        throw new UnsupportedOperationException("unsupported");
+        throw UnsupportedOperationException("unsupported")
     }
 
-    @Nullable
-    @Override
-    public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArgs, @Nullable String sortOrder) {
-        throw new UnsupportedOperationException("unsupported");
+    override fun query(
+        uri: Uri,
+        projection: Array<String>?,
+        selection: String?,
+        selectionArgs: Array<String>?,
+        sortOrder: String?
+    ): Cursor? {
+        throw UnsupportedOperationException("unsupported")
     }
 
-    @Nullable
-    @Override
-    public String getType(@NonNull Uri uri) {
-        throw new UnsupportedOperationException("unsupported");
+    override fun getType(uri: Uri): String? {
+        throw UnsupportedOperationException("unsupported")
     }
 
-    @Nullable
-    @Override
-    public Uri insert(@NonNull Uri uri, @Nullable ContentValues values) {
-        throw new UnsupportedOperationException("unsupported");
+    override fun insert(uri: Uri, values: ContentValues?): Uri? {
+        throw UnsupportedOperationException("unsupported")
     }
 
-    @Override
-    public int delete(@NonNull Uri uri, @Nullable String selection, @Nullable String[] selectionArgs) {
-        throw new UnsupportedOperationException("unsupported");
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int {
+        throw UnsupportedOperationException("unsupported")
     }
 
-    @Override
-    public int update(@NonNull Uri uri, @Nullable ContentValues values, @Nullable String selection, @Nullable String[] selectionArgs) {
-        throw new UnsupportedOperationException("unsupported");
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<String>?
+    ): Int {
+        throw UnsupportedOperationException("unsupported")
     }
 }

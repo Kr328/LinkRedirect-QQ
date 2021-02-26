@@ -1,170 +1,135 @@
-package com.github.kr328.link.qq;
+package com.github.kr328.link.qq
 
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.ContextWrapper;
-import android.content.Intent;
-import android.content.pm.LabeledIntent;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Parcelable;
-import android.support.v4.content.FileProvider;
-import android.util.Log;
+import android.app.Application
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.util.Log
+import androidx.annotation.Keep
+import androidx.core.os.bundleOf
+import com.github.kr328.link.qq.hack.FileDownloaderObserver
+import com.github.kr328.link.qq.hack.toFileInfo
+import com.tencent.mobileqq.filemanager.data.ForwardFileInfo
+import java.io.File
+import java.util.*
 
-import androidx.annotation.Keep;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.tencent.mobileqq.filemanager.data.ForwardFileInfo;
-
-import java.io.File;
-
-public class Interceptor extends ContextWrapper {
-    private static final String CATEGORY_IGNORE = "com.github.kr328.link.qq.IGNORE";
-
-    private static final ComponentName FILE_VIEWER_COMPONENT = ComponentName
-            .unflattenFromString("com.tencent.tim/com.tencent.mobileqq.filemanager.fileviewer.TroopFileDetailBrowserActivity");
-
+class Interceptor @Keep constructor(context: Context?) : ContextWrapper(context) {
     @Keep
-    public Interceptor(Context context) {
-        super(context);
+    fun intercept(intent: Intent): Intent {
+        if (intent.component == null) return intent
 
-        Log.i(Constants.TAG, "application " + getApplicationContext().getPackageName() + " injected");
+        Log.i(Constants.TAG, "Intercept " + applicationContext.packageName + " intent: " + intent)
+
+        intent.setExtrasClassLoader(Interceptor::class.java.classLoader)
+
+        if (intent.hasCategory(CATEGORY_IGNORE)) return intent
+
+        if (BuildConfig.DEBUG)
+            dumpExtras(intent)
+
+        return interceptNormalLink(intent) ?: interceptFileViewer(intent) ?: intent
     }
 
-    @Keep
-    @NonNull
-    public Intent intercept(@NonNull Intent intent) {
-        if (intent.getComponent() == null)
-            return intent;
+    private fun interceptNormalLink(intent: Intent): Intent? {
+        val uri = Uri.parse(intent.getStringExtra("url") ?: return null)
 
-        Log.i(Constants.TAG, "Intercept " + getApplicationContext().getPackageName() + " intent: " + intent);
+        if (uri.scheme?.toLowerCase(Locale.getDefault()) !in VALID_URL_SCHEME)
+            return null
 
-        intent.setExtrasClassLoader(Interceptor.class.getClassLoader());
+        return if (options.getBoolean("normal_link", true)) {
+            createViewChooser(uri, null, intent)
+        } else {
+            null
+        }
+    }
 
-        if (intent.hasCategory(CATEGORY_IGNORE))
-            return intent;
+    private fun interceptFileViewer(intent: Intent): Intent? {
+        if (intent.component?.className != FILE_VIEWER_CLASS_NAME)
+            return null
 
-        Intent normalLink = interceptNormalLink(intent);
-        if (normalLink != null)
-            return normalLink;
+        val raw = intent.getParcelableExtra("fileinfo") as ForwardFileInfo?
+        val fileInfo = (raw ?: return null).toFileInfo()
 
-        Intent fileViewer = interceptFileViewer(intent);
-        if (fileViewer != null)
-            return fileViewer;
+        Log.d(
+            Constants.TAG,
+            "Opening ${fileInfo.localPath ?: fileInfo.fileName} size = ${fileInfo.fileSize}"
+        )
 
-        if (BuildConfig.DEBUG) {
-            dumpExtras(intent);
+        if (!options.getBoolean("file_open", true)) {
+            return null
         }
 
-        return intent;
-    }
+        if (fileInfo.localPath == null) {
+            val base = applicationContext.getExternalFilesDir(null)?.parentFile ?: return null
+            val path = base.resolve("Tencent/$nameOfReceiveFile").resolve(fileInfo.fileName)
 
-    @Nullable
-    private Intent interceptNormalLink(@NonNull Intent intent) {
-        String url = intent.getStringExtra("url");
+            intent.putExtra(FileDownloaderObserver.EXTRA_FILE_PATH, path.absolutePath)
+            intent.putExtra(FileDownloaderObserver.EXTRA_FILE_SIZE, fileInfo.fileSize)
 
-        if (url != null) {
-            Uri uri = Uri.parse(url);
-
-            if ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) {
-                Bundle options = getOptions();
-
-                if (!options.getBoolean("normal_link", true))
-                    return null;
-
-                return createChooser(intent, uri, null);
-            }
+            return null
         }
 
-        return null;
+        return createViewChooser(File(fileInfo.localPath), intent)
     }
 
-    @Nullable
-    private Intent interceptFileViewer(@NonNull Intent intent) {
-        if (FILE_VIEWER_COMPONENT.equals(intent.getComponent())) {
-            ForwardFileInfo fileInfo = intent.getParcelableExtra("fileinfo");
-
-            if (fileInfo == null || fileInfo.getLocalPath() == null) {
-                return null;
-            }
-
-            Bundle options = getOptions();
-
-            if (!options.getBoolean("file_open", true)) {
-                return null;
-            }
-
-            File file = new File(fileInfo.getLocalPath());
-
-            if (!file.isFile() || file.length() != fileInfo.getFileSize()) {
-                return null;
-            }
-
-            Uri uri = FileProvider.getUriForFile(
-                    getApplicationContext(),
-                    getApplicationContext().getPackageName() + ".fileprovider",
-                    file
-            );
-
-            String type = getContentResolver().getType(uri);
-
-            if (type == null) {
-                type = "application/octet-stream";
-            }
-
-            Log.i(Constants.TAG, "File: name = " + fileInfo.getFileName() +
-                    " path = " + fileInfo.getLocalPath() +
-                    " size = " + fileInfo.getFileSize() +
-                    " mimeType = " + type);
-
-            return createChooser(intent, uri, type);
-        }
-
-        return null;
-    }
-
-    @NonNull
-    private Bundle getOptions() {
-        Uri uri = new Uri.Builder()
+    private val options: Bundle
+        get() {
+            val uri = Uri.Builder()
                 .scheme("content")
                 .authority(BuildConfig.APPLICATION_ID + ".options")
-                .build();
+                .build()
 
-        Bundle bundle = getContentResolver().call(uri, "GET", null, null);
+            return try {
+                val result = contentResolver.call(uri, "GET", null, null)
 
-        if (bundle == null) {
-            bundle = new Bundle();
+                cacheOptions = result
+
+                result
+            } catch (e: Exception) {
+                Log.w(Constants.TAG, "Get options", e)
+
+                null
+            } ?: cacheOptions ?: bundleOf()
         }
 
-        return bundle;
+    private fun dumpExtras(intent: Intent) {
+        Log.d(
+            Constants.TAG, Dumper.dump(
+                packageName, intent
+            )
+        )
     }
 
-    @NonNull
-    private Intent createChooser(@NonNull Intent original, @NonNull Uri uri, @Nullable String mimeType) {
-        original.addCategory(CATEGORY_IGNORE);
+    private val nameOfReceiveFile: String
+        get() {
+            return when (applicationContext.packageName) {
+                "com.tencent.tim" -> "TIMFile_recv"
+                "com.tencent.mobileqq" -> "QQFile_recv"
+                else -> {
+                    val label =
+                        applicationContext.applicationInfo.loadLabel(applicationContext.packageManager)
 
-        Intent view = new Intent(Intent.ACTION_VIEW);
+                    return "${label}File_recv"
+                }
+            }
+        }
 
-        if (mimeType == null)
-            view.addCategory(Intent.CATEGORY_BROWSABLE);
-        else
-            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    companion object {
+        const val CATEGORY_IGNORE = "com.github.kr328.link.qq.IGNORE"
 
-        view.setDataAndType(uri, mimeType);
+        private val VALID_URL_SCHEME = setOf("http", "https", "content")
+        private val FILE_VIEWER_CLASS_NAME =
+            "com.tencent.mobileqq.filemanager.fileviewer.TroopFileDetailBrowserActivity"
 
-        Intent chooser = Intent.createChooser(view, null);
-
-        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[]{
-                new LabeledIntent(original, getPackageName(), getString(R.string.internal_browser), 0)
-        });
-
-        Log.i(Constants.TAG, "Redirect: " + uri);
-
-        return chooser;
+        private var cacheOptions: Bundle? = null
     }
 
-    private void dumpExtras(@NonNull Intent intent) {
-        Log.d(Constants.TAG, Dumper.dump(getPackageName(), intent));
+    init {
+        (applicationContext as Application)
+            .registerActivityLifecycleCallbacks(FileDownloaderObserver(this))
+
+        Log.i(Constants.TAG, "application " + applicationContext.packageName + " injected")
     }
 }

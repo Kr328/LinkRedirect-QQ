@@ -1,70 +1,67 @@
-package com.github.kr328.link.qq;
+package com.github.kr328.link.qq
 
-import android.content.pm.PackageManager;
-import android.os.Bundle;
+import android.content.pm.PackageManager
+import android.os.Bundle
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
 
-import androidx.annotation.NonNull;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
+class MainFragment : PreferenceFragmentCompat() {
+    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+        preferenceManager.sharedPreferencesName = "options"
 
-public class MainFragment extends PreferenceFragmentCompat {
-    private final int REQUEST_CODE_PERMISSION = 100;
-    private final String RUNTIME_PACKAGE_NAME = "com.github.kr328.intent";
+        setPreferencesFromResource(R.xml.main, rootKey)
 
-    @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        getPreferenceManager().setSharedPreferencesName("options");
-
-        setPreferencesFromResource(R.xml.main, rootKey);
-
-        Preference status = getPreferenceScreen().findPreference("status");
-
-        boolean installed;
+        val status = preferenceScreen.findPreference<Preference>("status")
 
         try {
-            requireActivity().getPackageManager().getApplicationInfo(RUNTIME_PACKAGE_NAME, 0);
+            requireActivity().packageManager.getApplicationInfo(RUNTIME_PACKAGE_NAME, 0)
+        } catch (e: PackageManager.NameNotFoundException) {
+            status!!.setSummary(R.string.runtime_not_found)
 
-            installed = true;
-        } catch (PackageManager.NameNotFoundException e) {
-            installed = false;
+            return
         }
 
-        if (!installed) {
-            status.setSummary(R.string.runtime_not_found);
-
-            return;
-        }
-
-        boolean granted = requireActivity()
-                .checkSelfPermission(Constants.INTENT_INTERCEPTOR_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        val granted = requireActivity()
+            .checkSelfPermission(Constants.INTENT_INTERCEPTOR_PERMISSION) == PackageManager.PERMISSION_GRANTED
 
         if (granted) {
-            status.setSummary(R.string.authorized);
+            status!!.setSummary(R.string.authorized)
         } else {
-            status.setSummary(R.string.unauthorized);
+            status!!.setSummary(R.string.unauthorized)
         }
 
-        status.setOnPreferenceClickListener((Preference preference) -> {
-            requestPermissions(new String[]{Constants.INTENT_INTERCEPTOR_PERMISSION}, REQUEST_CODE_PERMISSION);
-
-            return true;
-        });
+        status.onPreferenceClickListener =
+            Preference.OnPreferenceClickListener {
+                requestPermissions(
+                    arrayOf(Constants.INTENT_INTERCEPTOR_PERMISSION),
+                    REQUEST_CODE_PERMISSION
+                )
+                true
+            }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         if (requestCode == REQUEST_CODE_PERMISSION) {
-            Preference status = getPreferenceScreen().findPreference("status");
+            val status = preferenceScreen.findPreference<Preference>("status")
 
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                status.setSummary(R.string.authorized);
+                status!!.setSummary(R.string.authorized)
             } else {
-                status.setSummary(R.string.unauthorized);
+                status!!.setSummary(R.string.unauthorized)
             }
 
-            return;
+            return
         }
 
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    companion object {
+        private const val REQUEST_CODE_PERMISSION = 100
+        private const val RUNTIME_PACKAGE_NAME = "com.github.kr328.intent"
     }
 }
