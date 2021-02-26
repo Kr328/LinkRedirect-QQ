@@ -9,17 +9,34 @@ import androidx.preference.PreferenceFragmentCompat;
 
 public class MainFragment extends PreferenceFragmentCompat {
     private final int REQUEST_CODE_PERMISSION = 100;
+    private final String RUNTIME_PACKAGE_NAME = "com.github.kr328.intent";
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         getPreferenceManager().setSharedPreferencesName("options");
 
-        boolean granted = requireActivity()
-                .checkSelfPermission(Constants.INTENT_INTERCEPTOR_PERMISSION) == PackageManager.PERMISSION_GRANTED;
-
         setPreferencesFromResource(R.xml.main, rootKey);
 
         Preference status = getPreferenceScreen().findPreference("status");
+
+        boolean installed;
+
+        try {
+            requireActivity().getPackageManager().getApplicationInfo(RUNTIME_PACKAGE_NAME, 0);
+
+            installed = true;
+        } catch (PackageManager.NameNotFoundException e) {
+            installed = false;
+        }
+
+        if (!installed) {
+            status.setSummary(R.string.runtime_not_found);
+
+            return;
+        }
+
+        boolean granted = requireActivity()
+                .checkSelfPermission(Constants.INTENT_INTERCEPTOR_PERMISSION) == PackageManager.PERMISSION_GRANTED;
 
         if (granted) {
             status.setSummary(R.string.authorized);

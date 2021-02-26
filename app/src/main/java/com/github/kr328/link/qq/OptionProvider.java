@@ -27,6 +27,7 @@ public class OptionProvider extends ContentProvider {
 
             result.putBoolean("normal_link", sp.getBoolean("normal_link", true));
             result.putBoolean("bilibili_link", sp.getBoolean("bilibili_link", true));
+            result.putBoolean("file_open", sp.getBoolean("file_open", true));
 
             return result;
         }

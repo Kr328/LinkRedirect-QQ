@@ -1,13 +1,17 @@
 <resources>
     <string name="app_name">QQ 链接重定向</string>
     <string name="status">状态</string>
+    <string name="runtime_not_found">未安装依赖模块</string>
     <string name="unauthorized">未授权</string>
     <string name="authorized">已授权</string>
     <string name="redirect">重定向</string>
+    <string name="link">链接</string>
     <string name="redirect_normal_link">重定向普通链接</string>
     <string name="redirect_normal_link_summary">重定向常见消息链接</string>
     <string name="redirect_bilibili">重定向 Bilibili 小程序</string>
     <string name="redirect_bilibili_summary">重定向 Bilibili 小程序内容至 Bilibili</string>
-    <string name="open_link">打开链接</string>
+    <string name="file">文件</string>
+    <string name="redirect_file_open">重定向打开文件文件</string>
+    <string name="redirect_file_open_summary">重定向 QQ 内部文件打开操作</string>
     <string name="internal_browser">内置浏览器</string>
 </resources>

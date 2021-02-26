@@ -1,6 +1,6 @@
 package com.github.kr328.link.qq;
 
-import android.app.Application;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
@@ -8,24 +8,28 @@ import android.content.pm.LabeledIntent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.tencent.mobileqq.filemanager.data.ForwardFileInfo;
+
+import java.io.File;
+
 public class Interceptor extends ContextWrapper {
     private static final String CATEGORY_IGNORE = "com.github.kr328.link.qq.IGNORE";
 
-    private final Application application;
+    private static final ComponentName FILE_VIEWER_COMPONENT = ComponentName
+            .unflattenFromString("com.tencent.tim/com.tencent.mobileqq.filemanager.fileviewer.TroopFileDetailBrowserActivity");
 
     @Keep
-    public Interceptor(Application application, Context context) {
+    public Interceptor(Context context) {
         super(context);
 
-        this.application = application;
-
-        Log.i(Constants.TAG, "application " + application.getPackageName() + " injected");
+        Log.i(Constants.TAG, "application " + getApplicationContext().getPackageName() + " injected");
     }
 
     @Keep
@@ -34,7 +38,9 @@ public class Interceptor extends ContextWrapper {
         if (intent.getComponent() == null)
             return intent;
 
-        Log.i(Constants.TAG, "Intercept " + application.getPackageName() + " intent: " + intent);
+        Log.i(Constants.TAG, "Intercept " + getApplicationContext().getPackageName() + " intent: " + intent);
+
+        intent.setExtrasClassLoader(Interceptor.class.getClassLoader());
 
         if (intent.hasCategory(CATEGORY_IGNORE))
             return intent;
@@ -42,6 +48,10 @@ public class Interceptor extends ContextWrapper {
         Intent normalLink = interceptNormalLink(intent);
         if (normalLink != null)
             return normalLink;
+
+        Intent fileViewer = interceptFileViewer(intent);
+        if (fileViewer != null)
+            return fileViewer;
 
         if (BuildConfig.DEBUG) {
             dumpExtras(intent);
@@ -63,8 +73,52 @@ public class Interceptor extends ContextWrapper {
                 if (!options.getBoolean("normal_link", true))
                     return null;
 
-                return createChooser(intent, uri);
+                return createChooser(intent, uri, null);
             }
+        }
+
+        return null;
+    }
+
+    @Nullable
+    private Intent interceptFileViewer(@NonNull Intent intent) {
+        if (FILE_VIEWER_COMPONENT.equals(intent.getComponent())) {
+            ForwardFileInfo fileInfo = intent.getParcelableExtra("fileinfo");
+
+            if (fileInfo == null || fileInfo.getLocalPath() == null) {
+                return null;
+            }
+
+            Bundle options = getOptions();
+
+            if (!options.getBoolean("file_open", true)) {
+                return null;
+            }
+
+            File file = new File(fileInfo.getLocalPath());
+
+            if (!file.isFile() || file.length() != fileInfo.getFileSize()) {
+                return null;
+            }
+
+            Uri uri = FileProvider.getUriForFile(
+                    getApplicationContext(),
+                    getApplicationContext().getPackageName() + ".fileprovider",
+                    file
+            );
+
+            String type = getContentResolver().getType(uri);
+
+            if (type == null) {
+                type = "application/octet-stream";
+            }
+
+            Log.i(Constants.TAG, "File: name = " + fileInfo.getFileName() +
+                    " path = " + fileInfo.getLocalPath() +
+                    " size = " + fileInfo.getFileSize() +
+                    " mimeType = " + type);
+
+            return createChooser(intent, uri, type);
         }
 
         return null;
@@ -87,21 +141,25 @@ public class Interceptor extends ContextWrapper {
     }
 
     @NonNull
-    private Intent createChooser(@NonNull Intent original, @NonNull Uri uri) {
+    private Intent createChooser(@NonNull Intent original, @NonNull Uri uri, @Nullable String mimeType) {
         original.addCategory(CATEGORY_IGNORE);
 
         Intent view = new Intent(Intent.ACTION_VIEW);
 
-        view.addCategory(Intent.CATEGORY_BROWSABLE);
-        view.setData(uri);
+        if (mimeType == null)
+            view.addCategory(Intent.CATEGORY_BROWSABLE);
+        else
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-        Intent chooser = Intent.createChooser(view, getString(R.string.open_link));
+        view.setDataAndType(uri, mimeType);
+
+        Intent chooser = Intent.createChooser(view, null);
 
         chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[]{
                 new LabeledIntent(original, getPackageName(), getString(R.string.internal_browser), 0)
         });
 
-        Log.i(Constants.TAG, "Opening " + uri);
+        Log.i(Constants.TAG, "Redirect: " + uri);
 
         return chooser;
     }
