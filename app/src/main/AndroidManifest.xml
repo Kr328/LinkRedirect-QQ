@@ -5,6 +5,10 @@
 
     <uses-permission android:name="com.github.kr328.intent.permission.INTERCEPT_INTENTS" />
 
+    <queries>
+        <package android:name="com.github.kr328.intent" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
