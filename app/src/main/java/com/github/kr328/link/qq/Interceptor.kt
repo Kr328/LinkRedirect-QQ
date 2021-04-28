@@ -46,10 +46,10 @@ class Interceptor @Keep constructor(context: Context?) : ContextWrapper(context)
     }
 
     private fun interceptFileViewer(intent: Intent): Intent? {
-        if (intent.component?.className != FILE_VIEWER_CLASS_NAME)
+        if (!intent.hasExtra("fileinfo"))
             return null
 
-        val raw = intent.getParcelableExtra("fileinfo") as ForwardFileInfo?
+        val raw = intent.getParcelableExtra("fileinfo") as? ForwardFileInfo?
         val fileInfo = (raw ?: return null).toFileInfo()
 
         Log.d(
@@ -120,8 +120,6 @@ class Interceptor @Keep constructor(context: Context?) : ContextWrapper(context)
         const val CATEGORY_IGNORE = "com.github.kr328.link.qq.IGNORE"
 
         private val VALID_URL_SCHEME = setOf("http", "https", "content")
-        private val FILE_VIEWER_CLASS_NAME =
-            "com.tencent.mobileqq.filemanager.fileviewer.TroopFileDetailBrowserActivity"
 
         private var cacheOptions: Bundle? = null
     }
