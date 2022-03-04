@@ -1,4 +1,0 @@
-include ':hideapi'
-include ':app'
-
-rootProject.name = "LinkRedirect - QQ"

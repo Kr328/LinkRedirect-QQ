@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.github.kr328.link.qq">
 
     <uses-permission android:name="com.github.kr328.intent.permission.INTERCEPT_INTENTS" />
@@ -17,10 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light">
 
-        <meta-data android:name="interceptor" android:value="com.github.kr328.link.qq.Interceptor" />
-        <meta-data android:name="target" android:value="com.tencent.mobileqq|com.tencent.tim" />
-
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -29,10 +27,14 @@
         </activity>
 
         <provider
-            android:authorities="${applicationId}.options"
-            android:name=".OptionProvider"
+            android:name=".Configuration"
+            android:authorities="${applicationId}.configuration"
             android:exported="true"
-            tools:ignore="ExportedContentProvider" />
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL">
+            <intent-filter>
+                <action android:name="com.github.kr328.intent.provider.CONFIGURATION" />
+            </intent-filter>
+        </provider>
     </application>
 
 </manifest>
